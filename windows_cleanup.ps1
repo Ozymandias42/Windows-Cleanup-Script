@@ -10,6 +10,13 @@ WdNisSvc - Windows Defender Netzwerkinspektionsdienst
 DiagTrack - Benutzererfahrung und Telemetrie im verbundenen Modus
 #>
 
+<# 
+Removes Windows Search Indexing.
+Disable-WindowsOptionalFeature -Online -NoRestart -Remove -FeatureName SearchEngine-Client-Package
+
+Remove-WindowsCapability -Online -Name Hello.Face.18330
+#>
+
 #SET VARIABLES
 #Install openssh server
 
@@ -23,6 +30,16 @@ $WindowsOptionalFeatures2Remove=@(
 "Printing-XPSServices-Features"
 )
 
+$AppXNames2Exclude=@(
+    "Dolby",
+    "Intel",
+    "Lenovo",
+    "Wacom",
+    "Realtek",
+    #The next line is important to allow for reinstallation of apps via powershell again. Also store is removable but would need to be reinstalled via 
+    "store","extension","advertising","NET","UI","VCLibs"
+)
+
 #DEFINE FUNCTIONS
 function Remove-OneDrive {
     param ()
@@ -32,9 +49,12 @@ function Remove-OneDrive {
     else {
         $SystemDir="SysWOW64"
     }
-    $OneDriveUninstExpr="$Env:SystemRoot\$($SystemDir)\OneDriveSetup.exe /uninstall"
+    $OneDriveExePath="$Env:SystemRoot\$($SystemDir)\OneDriveSetup.exe"
 
-    if (Test-Path ){
+    if (Test-Path $OneDriveExePath){
+        $OneDriveUninstExpr="$($OneDriveExePath) /uninstall"
+        #Make sure onedrive isn't ruinning anymore.
+        Stop-Process -Force -Name OneDrive
         Invoke-Expression "$OneDriveUninstExpr"
     }    
     
@@ -65,6 +85,37 @@ function Remove-WindowsOptionalFeatures {
         }
     }
 }
+
+function Remove-AppXPackages {
+    param([array] $AppXNames2Exclude )
+    #Create List of all Packages that are removable at all.
+    $RemovablePackages=Get-AppxPackage -AllUsers | Where-Object { -not $_.NonRemovable }
+    
+    #Filters that list according to pre-defined criteria
+    function FiltertMatchesInList {
+        param ($value, [Array]$List)
+        foreach ($item in $List){
+            if ($value -match $item) {
+                $return=@($return, $False) 
+            }
+        }
+        if ($return -contains $False) {
+            return
+        }
+        else { 
+            return $True
+        }
+    }
+    
+    #$Packages2Remove=$RemovablePackages | filterAgainstList $AppXNames2Exclude $_ 
+    $Packages2Remove=$RemovablePackages | Where-Object { 
+        FiltertMatchesInList $_.Name $AppXNames2Exclude 
+    }
+    
+    $Packages2Remove | Remove-AppxPackage -AllUsers -ErrorAction Inquire
+    
+}
+
 #DO STUFF
 
 #Disable Windows Seach Webresults
@@ -74,14 +125,8 @@ Install-OpenSSHServer
 
 Remove-WindowsOptionalFeatures($WindowsOptionalFeatures2Remove)
 
-Get-AppxPackage -AllUsers | 
-    Where-Object {
-        $_.Name -NotMatch "store|extension|advertising|NET|UI|VCLibs" -and -not $_.NonRemovable 
-    }   |Remove-AppxPackage -AllUsers -ErrorAction Inquire
-
-
-
-
 Remove-OneDrive
+
+Remove-AppXPackages $AppXNames2Exclude
 
 
