@@ -94,20 +94,15 @@ function Remove-AppXPackages {
     #Filters that list according to pre-defined criteria
     function FiltertMatchesInList {
         param ($value, [Array]$List)
-        foreach ($item in $List){
+        foreach ($item in $List) {
             if ($value -match $item) {
-                $return=@($return, $False) 
+              return $False
             }
-        }
-        if ($return -contains $False) {
-            return
-        }
-        else { 
-            return $True
-        }
+          }
+          return $True
     }
     
-    #$Packages2Remove=$RemovablePackages | filterAgainstList $AppXNames2Exclude $_ 
+    #$Packa ges2Remove=$RemovablePackages | filterAgainstList $AppXNames2Exclude $_ 
     $Packages2Remove=$RemovablePackages | Where-Object { 
         FiltertMatchesInList $_.Name $AppXNames2Exclude 
     }
