@@ -18,9 +18,6 @@ Remove-WindowsCapability -Online -Name Hello.Face.18330
 #>
 
 #SET VARIABLES
-#Install openssh server
-
-
 $WindowsOptionalFeatures2Remove=@(
 "Internet-Explorer-Optional-x86",
 "SMB1Protocol",
@@ -54,7 +51,10 @@ function Remove-OneDrive {
     if (Test-Path $OneDriveExePath){
         $OneDriveUninstExpr="$($OneDriveExePath) /uninstall"
         #Make sure onedrive isn't ruinning anymore.
-        Stop-Process -Force -Name OneDrive
+        $OneDriveProcess=@(Get-Process "*onedrive*")
+        if ($OneDriveProcess.Count -ne 0 ) { Stop-Process -Force -Name OneDrive }
+        
+        #Invoke Uninstall Expression
         Invoke-Expression "$OneDriveUninstExpr"
     }    
     
@@ -85,7 +85,6 @@ function Remove-WindowsOptionalFeatures {
         }
     }
 }
-
 function Remove-AppXPackages {
     param([array] $AppXNames2Exclude )
     #Create List of all Packages that are removable at all.
@@ -112,7 +111,6 @@ function Remove-AppXPackages {
 }
 
 #DO STUFF
-
 #Disable Windows Seach Webresults
 Set-WindowsSearchSetting -EnableWebResultsSetting 0
 
@@ -123,5 +121,3 @@ Remove-WindowsOptionalFeatures($WindowsOptionalFeatures2Remove)
 Remove-OneDrive
 
 Remove-AppXPackages $AppXNames2Exclude
-
-
